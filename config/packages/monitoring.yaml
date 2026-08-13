@@ -1,0 +1,5 @@
+ad2210_monitoring:
+    application_name: monitoring-demo
+    environment: dev
+    health:
+        token: demo-token
