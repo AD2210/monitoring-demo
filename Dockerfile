@@ -97,7 +97,9 @@ COPY --link --exclude=frankenphp/ . ./
 RUN <<-EOF
 	mkdir -p var/cache var/log var/share
 	composer dump-autoload --classmap-authoritative --no-dev
-	composer dump-env prod
+	# The production environment is injected by Compose at runtime; no .env file
+	# is copied into the image because it may contain deployment secrets.
+	composer dump-env prod --empty
 	if [ -f importmap.php ]; then
 		php bin/console asset-map:compile
 	fi
