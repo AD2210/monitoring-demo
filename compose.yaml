@@ -20,6 +20,8 @@ services:
       STABILITY: ${STABILITY:-stable}
       ###< dunglas/symfony-docker ###
     volumes:
+      - .:/app
+      - ../monitoring-bundle:/monitoring-bundle
       - caddy_data:/data
       - caddy_config:/config
     ports:
