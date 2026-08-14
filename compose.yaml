@@ -3,7 +3,7 @@ services:
     build:
       context: .
       args:
-        MONITORING_BUNDLE_REPOSITORY: ${MONITORING_BUNDLE_REPOSITORY:-}
+        MONITORING_BUNDLE_REPOSITORY: ${MONITORING_BUNDLE_REPOSITORY:-https://github.com/AD2210/monitoring-bundle.git}
         MONITORING_BUNDLE_REF: ${MONITORING_BUNDLE_REF:-develop}
     environment:
       APP_ENV: ${APP_ENV:-prod}
