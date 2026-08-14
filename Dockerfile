@@ -97,7 +97,6 @@ COPY --link --exclude=frankenphp/ . ./
 RUN <<-EOF
 	mkdir -p var/cache var/log var/share
 	composer dump-autoload --classmap-authoritative --no-dev
-	composer dump-env prod
 	if [ -f importmap.php ]; then
 		php bin/console asset-map:compile
 	fi
