@@ -37,6 +37,9 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 
 ENV PHP_INI_SCAN_DIR=":$PHP_INI_DIR/app.conf.d"
 
+ARG MONITORING_BUNDLE_REPOSITORY
+ARG MONITORING_BUNDLE_REF=develop
+
 ###> recipes ###
 ###< recipes ###
 
@@ -75,11 +78,18 @@ ENV APP_ENV=prod
 
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
+# The bundle is cloned here because the production image is built independently
+# from the local sibling repository used by Composer during development.
+RUN test -n "$MONITORING_BUNDLE_REPOSITORY" \
+    && git clone --depth 1 --branch "$MONITORING_BUNDLE_REF" \
+        "$MONITORING_BUNDLE_REPOSITORY" /monitoring-bundle
+
 COPY --link frankenphp/conf.d/20-app.prod.ini $PHP_INI_DIR/app.conf.d/
 
 # prevent the reinstallation of vendors at every changes in the source code
 COPY --link composer.* symfony.* ./
-RUN composer install --no-cache --prefer-dist --no-dev --no-autoloader --no-scripts --no-progress
+RUN sed -i 's/"symlink": true/"symlink": false/' composer.json \
+    && composer install --no-cache --prefer-dist --no-dev --no-autoloader --no-scripts --no-progress
 
 # copy sources
 COPY --link --exclude=frankenphp/ . ./
