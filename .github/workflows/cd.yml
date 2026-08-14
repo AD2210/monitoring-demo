@@ -155,10 +155,18 @@ jobs:
                   set -eu
                   cd "$DEPLOY_PATH"
                   export IMAGE_TAG IMAGE_NAME
+                  APP_NAME="${DEPLOY_PATH#/srv/apps/}"
+                  export PHP_IMAGE="$IMAGE_NAME"
+                  command -v server-release >/dev/null 2>&1 || {
+                      echo 'server-release is required on the deployment server' >&2
+                      exit 1
+                  }
+                  server-release init "$APP_NAME" php "$PHP_IMAGE"
                   docker compose --env-file .env --env-file .env.prod.local \
                       -f compose.yaml -f compose.prod.yaml pull
                   docker compose --env-file .env --env-file .env.prod.local \
                       -f compose.yaml -f compose.prod.yaml up -d --remove-orphans --wait
+                  server-release record "$APP_NAME" php "$IMAGE_TAG"
                   docker compose --env-file .env --env-file .env.prod.local \
                       -f compose.yaml -f compose.prod.yaml ps
                   REMOTE
