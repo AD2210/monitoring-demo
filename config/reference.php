@@ -139,6 +139,10 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         enabled?: bool|Param, // Default: true
  *         token?: scalar|Param|null, // Default: ""
  *     },
+ *     metrics?: array{
+ *         enabled?: bool|Param, // Default: true
+ *         token?: scalar|Param|null, // Default: ""
+ *     },
  * }
  * @psalm-type FrameworkConfig = array{
  *     secret?: scalar|Param|null,
