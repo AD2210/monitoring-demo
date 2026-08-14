@@ -18,3 +18,12 @@ Deterministic application scenarios are available at:
 /demo/fail
 /demo/slow
 ```
+
+To simulate a failed readiness dependency, start the application with:
+
+```bash
+MONITORING_DEMO_DEPENDENCY_DOWN=1 php -S 127.0.0.1:8091 -t public public/index.php
+```
+
+The readiness endpoint then returns HTTP 503 and identifies
+`demo_dependency` as failed without exposing internal error details.

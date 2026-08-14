@@ -5,3 +5,9 @@ services:
 
     App\:
         resource: '../src/'
+
+    App\Health\DemoDependencyReadinessCheck:
+        arguments:
+            $dependencyDown: '%env(bool:MONITORING_DEMO_DEPENDENCY_DOWN)%'
+        tags:
+            - { name: ad2210_monitoring.readiness_check }
