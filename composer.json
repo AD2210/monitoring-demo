@@ -17,6 +17,7 @@
     "require": {
         "php": ">=8.4",
         "ad2210/monitoring-bundle": "dev-develop",
+        "symfony/flex": "^2.10",
         "symfony/framework-bundle": "^8.1",
         "symfony/dotenv": "^8.1",
         "symfony/runtime": "^8.1",
@@ -29,6 +30,7 @@
     },
     "config": {
         "allow-plugins": {
+            "symfony/flex": true,
             "symfony/runtime": true
         }
     },
@@ -36,6 +38,12 @@
         "symfony": {
             "allow-contrib": false,
             "require": "8.1.*"
+        }
+    },
+    "scripts": {
+        "auto-scripts": {
+            "cache:clear": "symfony-cmd",
+            "assets:install %PUBLIC_DIR%": "symfony-cmd"
         }
     }
 }
