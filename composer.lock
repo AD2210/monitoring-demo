@@ -12,7 +12,7 @@
             "dist": {
                 "type": "path",
                 "url": "../monitoring-bundle",
-                "reference": "f5739331fa47229f4da91a07e25f0801d18a4373"
+                "reference": "2108cbeb09ce61c03dabe762c2dde2c26873a06a"
             },
             "require": {
                 "php": ">=8.4",
