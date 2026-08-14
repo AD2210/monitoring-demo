@@ -3,6 +3,6 @@ services:
     image: ${IMAGE_NAME:-ghcr.io/ad2210/monitoring-demo}:${IMAGE_TAG:?Set IMAGE_TAG}
     build: !reset null
     environment:
-      APP_ENV: prod
-      APP_DEBUG: 0
-    restart: unless-stopped
+      APP_ENV: ${APP_ENV:-prod}
+      APP_DEBUG: ${APP_DEBUG:-0}
+      APP_SECRET: ${APP_SECRET:?Set APP_SECRET}
