@@ -1,5 +1,5 @@
 services:
-  app:
+  php:
     image: ${IMAGE_NAME:-ghcr.io/ad2210/monitoring-demo}:${IMAGE_TAG:?Set IMAGE_TAG}
     build: !reset null
     environment:
