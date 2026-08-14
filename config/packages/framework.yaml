@@ -1,5 +1,5 @@
 framework:
-    secret: demo-secret
+    secret: '%env(APP_SECRET)%'
     http_method_override: false
     handle_all_throwables: true
     router:

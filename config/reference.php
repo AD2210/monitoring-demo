@@ -135,6 +135,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     enabled?: bool|Param, // Default: true
  *     application_name?: scalar|Param|null, // Default: "unknown"
  *     environment?: scalar|Param|null, // Default: "prod"
+ *     version?: scalar|Param|null, // Default: "unknown"
  *     health?: array{
  *         enabled?: bool|Param, // Default: true
  *         token?: scalar|Param|null, // Default: ""

@@ -1,0 +1,18 @@
+{
+    skip_install_trust
+
+    frankenphp {
+        worker /app/public/index.php
+    }
+}
+
+{$SERVER_NAME:localhost} {
+    root * /app/public
+    encode zstd gzip
+
+    log {
+        format json
+    }
+
+    php_server
+}

@@ -1,0 +1,73 @@
+name: CI
+
+on:
+    push:
+        branches: [develop]
+        tags: ['v*.*.*']
+    pull_request:
+        branches: [develop, main]
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+    cancel-in-progress: true
+
+env:
+    MONITORING_BUNDLE_REPOSITORY: ${{ vars.MONITORING_BUNDLE_REPOSITORY }}
+
+jobs:
+    quality:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  persist-credentials: false
+
+            - name: Validate bundle repository configuration
+              run: test -n "$MONITORING_BUNDLE_REPOSITORY"
+
+            - name: Checkout monitoring bundle
+              run: git clone --depth 1 --branch develop "$MONITORING_BUNDLE_REPOSITORY" ../monitoring-bundle
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.5'
+                  extensions: ctype, iconv
+                  coverage: pcov
+                  tools: composer:v2
+
+            - name: Install dependencies
+              run: composer install --prefer-dist --no-interaction --no-progress
+
+            - name: Validate container
+              env:
+                  APP_SECRET: ci-secret
+                  MONITORING_APPLICATION_NAME: monitoring-demo
+                  MONITORING_HEALTH_TOKEN: ci-token
+                  MONITORING_METRICS_TOKEN: ci-token
+              run: php bin/console lint:container --no-debug
+
+            - name: Validate Compose configuration
+              env:
+                  APP_SECRET: ci-secret
+                  MONITORING_HEALTH_TOKEN: ci-token
+                  MONITORING_METRICS_TOKEN: ci-token
+                  MONITORING_BUNDLE_REPOSITORY: ${{ vars.MONITORING_BUNDLE_REPOSITORY }}
+              run: docker compose config --quiet
+
+    docker:
+        runs-on: ubuntu-latest
+        needs: quality
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  persist-credentials: false
+
+            - name: Build FrankenPHP image
+              env:
+                  MONITORING_BUNDLE_REPOSITORY: ${{ vars.MONITORING_BUNDLE_REPOSITORY }}
+              run: docker build --build-arg MONITORING_BUNDLE_REPOSITORY="$MONITORING_BUNDLE_REPOSITORY" --build-arg MONITORING_BUNDLE_REF=develop --target frankenphp_prod --tag monitoring-demo:ci .

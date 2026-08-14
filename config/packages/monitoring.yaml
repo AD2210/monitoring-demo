@@ -1,7 +1,7 @@
 ad2210_monitoring:
-    application_name: monitoring-demo
-    environment: dev
+    application_name: '%env(MONITORING_APPLICATION_NAME)%'
+    environment: '%kernel.environment%'
     health:
-        token: demo-token
+        token: '%env(MONITORING_HEALTH_TOKEN)%'
     metrics:
-        token: demo-token
+        token: '%env(MONITORING_METRICS_TOKEN)%'

@@ -18,6 +18,7 @@
         "php": ">=8.4",
         "ad2210/monitoring-bundle": "dev-develop",
         "symfony/framework-bundle": "^8.1",
+        "symfony/dotenv": "^8.1",
         "symfony/runtime": "^8.1",
         "symfony/yaml": "^8.1"
     },
