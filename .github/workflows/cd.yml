@@ -164,15 +164,8 @@ jobs:
                   server-release init "$APP_NAME" php "$PHP_IMAGE"
                   docker compose --env-file .env --env-file .env.prod.local \
                       -f compose.yaml -f compose.prod.yaml pull
-                  if ! docker compose --env-file .env --env-file .env.prod.local \
-                      -f compose.yaml -f compose.prod.yaml up -d --remove-orphans --wait --wait-timeout 300; then
-                      echo 'Application stack diagnostics:' >&2
-                      docker compose --env-file .env --env-file .env.prod.local \
-                          -f compose.yaml -f compose.prod.yaml ps >&2 || true
-                      docker compose --env-file .env --env-file .env.prod.local \
-                          -f compose.yaml -f compose.prod.yaml logs --no-color --tail=200 php >&2 || true
-                      exit 1
-                  fi
+                  docker compose --env-file .env --env-file .env.prod.local \
+                      -f compose.yaml -f compose.prod.yaml up -d --remove-orphans --wait
                   server-release record "$APP_NAME" php "$IMAGE_TAG"
                   docker compose --env-file .env --env-file .env.prod.local \
                       -f compose.yaml -f compose.prod.yaml ps
