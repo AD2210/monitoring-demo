@@ -67,6 +67,8 @@ RUN <<-EOF
 	git config --system --add safe.directory /app
 EOF
 
+COPY --link frankenphp/conf.d/20-app.dev.ini $PHP_INI_DIR/app.conf.d/
+
 CMD [ "frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile", "--watch" ]
 
 # Builder for the prod FrankenPHP image
@@ -81,6 +83,8 @@ RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 RUN test -n "$MONITORING_BUNDLE_REPOSITORY" \
     && git clone --depth 1 --branch "$MONITORING_BUNDLE_REF" \
         "$MONITORING_BUNDLE_REPOSITORY" /monitoring-bundle
+
+COPY --link frankenphp/conf.d/20-app.prod.ini $PHP_INI_DIR/app.conf.d/
 
 # prevent the reinstallation of vendors at every changes in the source code
 COPY --link composer.* symfony.* ./
