@@ -1,19 +1,20 @@
 services:
   php:
-    build:
-      context: .
-      args:
-        MONITORING_BUNDLE_REPOSITORY: ${MONITORING_BUNDLE_REPOSITORY:-https://github.com/AD2210/monitoring-bundle.git}
-        MONITORING_BUNDLE_REF: ${MONITORING_BUNDLE_REF:-develop}
-    environment:
-      APP_ENV: ${APP_ENV:-prod}
-      APP_DEBUG: ${APP_DEBUG:-0}
-      APP_SECRET: ${APP_SECRET:?Set APP_SECRET}
-      MONITORING_APPLICATION_NAME: ${MONITORING_APPLICATION_NAME:-monitoring-demo}
-      MONITORING_HEALTH_TOKEN: ${MONITORING_HEALTH_TOKEN:?Set MONITORING_HEALTH_TOKEN}
-      MONITORING_METRICS_TOKEN: ${MONITORING_METRICS_TOKEN:?Set MONITORING_METRICS_TOKEN}
-      MONITORING_DEMO_DEPENDENCY_DOWN: ${MONITORING_DEMO_DEPENDENCY_DOWN:-0}
-      SERVER_NAME: ${SERVER_NAME:-localhost}
-    ports:
-      - "${APP_PORT:-8080}:80"
     restart: unless-stopped
+    environment:
+      SERVER_NAME: ${SERVER_NAME:-localhost}
+      CADDY_SERVER_NAME: ${CADDY_SERVER_NAME:-http://${SERVER_NAME:-localhost}}
+      DEFAULT_URI: ${DEFAULT_URI:-https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-443}}
+
+      SYMFONY_VERSION: ${SYMFONY_VERSION:-}
+      STABILITY: ${STABILITY:-stable}
+      ###< dunglas/symfony-docker ###
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - name: http
+        host_ip: ${PHP_HOST:-127.0.0.1}
+        target: 80
+        published: ${PHP_PORT:-8080}
+        protocol: tcp
