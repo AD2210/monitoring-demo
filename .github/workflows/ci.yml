@@ -71,3 +71,15 @@ jobs:
               env:
                   MONITORING_BUNDLE_REPOSITORY: ${{ vars.MONITORING_BUNDLE_REPOSITORY }}
               run: docker build --build-arg MONITORING_BUNDLE_REPOSITORY="$MONITORING_BUNDLE_REPOSITORY" --build-arg MONITORING_BUNDLE_REF=develop --target frankenphp_prod --tag monitoring-demo:ci .
+
+    workflow-lint:
+        name: Workflow lint
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+
+            - name: Lint GitHub Actions
+              uses: raven-actions/actionlint@v2
