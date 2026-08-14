@@ -6,40 +6,62 @@ on:
     workflow_dispatch:
         inputs:
             image_tag:
-                description: Image tag to deploy
+                description: GHCR image tag to deploy
                 required: true
                 type: string
 
 permissions:
     contents: read
-    packages: write
+    packages: read
+
+concurrency:
+    group: production-deployment
+    cancel-in-progress: false
 
 env:
-    IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/monitoring-demo
+    IMAGE_NAME: ghcr.io/ad2210/monitoring-demo
 
 jobs:
     publish:
+        name: Publish production image
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
         steps:
-            - uses: actions/checkout@v4
+            - name: Checkout code
+              uses: actions/checkout@v7
               with:
                   persist-credentials: false
 
-            - uses: docker/login-action@v3
+            - name: Validate release tag
+              env:
+                  RELEASE_TAG: ${{ github.ref_name }}
+              run: |
+                  if ! printf '%s\n' "$RELEASE_TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+                      echo "Release tag must follow vMAJOR.MINOR.PATCH: $RELEASE_TAG" >&2
+                      exit 1
+                  fi
+
+            - name: Log in to GHCR
+              uses: docker/login-action@v3
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
-            - uses: docker/metadata-action@v5
+            - name: Generate image metadata
               id: metadata
+              uses: docker/metadata-action@v5
               with:
                   images: ${{ env.IMAGE_NAME }}
                   tags: |
                       type=sha
                       type=ref,event=tag
 
-            - uses: docker/build-push-action@v6
+            - name: Build and publish FrankenPHP image
+              uses: docker/build-push-action@v6
               with:
                   context: .
                   target: frankenphp_prod
@@ -51,13 +73,43 @@ jobs:
                       MONITORING_BUNDLE_REF=develop
 
     deploy:
+        name: Deploy with Docker Compose
         needs: publish
+        if: always() && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
         runs-on: ubuntu-latest
         environment: production
         steps:
-            - uses: actions/checkout@v4
+            - name: Checkout deployment configuration
+              uses: actions/checkout@v7
               with:
                   persist-credentials: false
+
+            - name: Validate image tag
+              env:
+                  IMAGE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.image_tag }}
+              run: |
+                  if ! printf '%s\n' "$IMAGE_TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$|^[a-f0-9]{40}$'; then
+                      echo 'Image tag must be vMAJOR.MINOR.PATCH or a 40-character commit SHA' >&2
+                      exit 1
+                  fi
+
+            - name: Wait for image availability
+              env:
+                  GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  IMAGE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.image_tag }}
+              run: |
+                  printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+                  for attempt in $(seq 1 30); do
+                      if docker manifest inspect "$IMAGE_NAME:$IMAGE_TAG" >/dev/null 2>&1; then
+                          echo "Image $IMAGE_NAME:$IMAGE_TAG is available"
+                          break
+                      fi
+                      if [ "$attempt" -eq 30 ]; then
+                          echo "Image $IMAGE_NAME:$IMAGE_TAG was not published in time" >&2
+                          exit 1
+                      fi
+                      sleep 10
+                  done
 
             - name: Configure SSH
               env:
@@ -76,21 +128,37 @@ jobs:
                   DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
                   DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
               run: |
-                  scp -P "${DEPLOY_PORT:-22}" -i "$RUNNER_TEMP/ssh/deploy_key" \
-                      -o BatchMode=yes -o StrictHostKeyChecking=yes \
+                  scp -P "${DEPLOY_PORT:-22}" \
+                      -i "$RUNNER_TEMP/ssh/deploy_key" \
+                      -o BatchMode=yes \
+                      -o StrictHostKeyChecking=yes \
                       -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
-                      compose.yaml compose.prod.yaml "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
+                      compose.yaml compose.prod.yaml \
+                      "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
 
-            - name: Deploy with Docker Compose
+            - name: Deploy application
               env:
                   DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
                   DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
                   DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
                   DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-                  IMAGE_TAG: ${{ github.ref_name }}
+                  IMAGE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.image_tag }}
               run: |
-                  ssh -p "${DEPLOY_PORT:-22}" -i "$RUNNER_TEMP/ssh/deploy_key" \
-                      -o BatchMode=yes -o StrictHostKeyChecking=yes \
+                  remote_command="IMAGE_TAG=$(printf '%q' "$IMAGE_TAG") IMAGE_NAME=$(printf '%q' "$IMAGE_NAME") DEPLOY_PATH=$(printf '%q' "$DEPLOY_PATH") sh -s"
+                  ssh -p "${DEPLOY_PORT:-22}" \
+                      -i "$RUNNER_TEMP/ssh/deploy_key" \
+                      -o BatchMode=yes \
+                      -o StrictHostKeyChecking=yes \
                       -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
                       "$DEPLOY_USER@$DEPLOY_HOST" \
-                      "cd '$DEPLOY_PATH' && IMAGE_TAG='$IMAGE_TAG' IMAGE_NAME='$IMAGE_NAME' docker compose -f compose.yaml -f compose.prod.yaml pull && IMAGE_TAG='$IMAGE_TAG' IMAGE_NAME='$IMAGE_NAME' docker compose -f compose.yaml -f compose.prod.yaml up -d --remove-orphans --wait"
+                      "$remote_command" <<'REMOTE'
+                  set -eu
+                  cd "$DEPLOY_PATH"
+                  export IMAGE_TAG IMAGE_NAME
+                  docker compose --env-file .env --env-file .env.prod.local \
+                      -f compose.yaml -f compose.prod.yaml pull
+                  docker compose --env-file .env --env-file .env.prod.local \
+                      -f compose.yaml -f compose.prod.yaml up -d --remove-orphans --wait
+                  docker compose --env-file .env --env-file .env.prod.local \
+                      -f compose.yaml -f compose.prod.yaml ps
+                  REMOTE
